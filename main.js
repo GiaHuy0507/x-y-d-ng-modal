@@ -1,12 +1,22 @@
 const $ = document.querySelector.bind(document);
-
 const $$ = document.querySelectorAll.bind(document);
 
 function Modal() {
-  this.openModal = (content) => {
-    // create modal content
+  // tạo phương thức open modal
+  this.openModal = (options = {}) => {
+    const { templateId } = options;
+    const template = $(`#${templateId}`);
+
+    if (!template) {
+      console.error(`#${templateId} does not exist!`);
+      return;
+    }
+
+    const content = template.content.cloneNode(true);
+
+    // Create modal elements
     const backdrop = document.createElement("div");
-    backdrop.className = "modal-backdrop ";
+    backdrop.className = "modal-backdrop";
 
     const container = document.createElement("div");
     container.className = "modal-container";
@@ -18,26 +28,23 @@ function Modal() {
     const modalContent = document.createElement("div");
     modalContent.className = "modal-content";
 
-    // Append content and element
-    modalContent.innerHTML = content;
-
+    // Append content and elements
+    modalContent.append(content);
     container.append(closeBtn, modalContent);
     backdrop.append(container);
     document.body.append(backdrop);
 
     setTimeout(() => {
       backdrop.classList.add("show");
-    }, 50);
+    }, 0);
 
-    // Attach event listener
+    // Attach event listeners
     closeBtn.onclick = () => this.closeModal(backdrop);
-
-    backdrop.onclick = () => {
+    backdrop.onclick = (e) => {
       if (e.target === backdrop) {
         this.closeModal(backdrop);
       }
     };
-
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         this.closeModal(backdrop);
@@ -45,10 +52,10 @@ function Modal() {
     });
   };
 
-  this.closeModal = (backdrop) => {
-    backdrop.classList.remove("show");
-    document.ontransitionend = () => {
-      backdrop.remove();
+  this.closeModal = (modalElement) => {
+    modalElement.classList.remove("show");
+    modalElement.ontransitionend = () => {
+      modalElement.remove();
     };
   };
 }
@@ -56,13 +63,13 @@ function Modal() {
 const modal = new Modal();
 
 $("#open-modal-1").onclick = () => {
-  modal.openModal("<h1>Hello F8 1</h1>");
+  modal.openModal({
+    templateId: "modal-1",
+  });
 };
 
 $("#open-modal-2").onclick = () => {
-  modal.openModal("<h1>Hello F8 2</h1>");
-};
-
-$("#open-modal-3").onclick = () => {
-  modal.openModal("<h1>Hello F8 3</h1>");
+  modal.openModal({
+    templateId: "modal-2",
+  });
 };
