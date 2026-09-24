@@ -2,9 +2,8 @@ const $ = document.querySelector.bind(document);
 const $$ = document.querySelectorAll.bind(document);
 
 function Modal() {
-  // tạo phương thức open modal
   this.openModal = (options = {}) => {
-    const { templateId } = options;
+    const { templateId, allowBackdropClose = true } = options;
     const template = $(`#${templateId}`);
 
     if (!template) {
@@ -38,24 +37,36 @@ function Modal() {
       backdrop.classList.add("show");
     }, 0);
 
+    // Disable scrolling
+    document.body.classList.add("no-scroll");
+
     // Attach event listeners
     closeBtn.onclick = () => this.closeModal(backdrop);
-    backdrop.onclick = (e) => {
-      if (e.target === backdrop) {
-        this.closeModal(backdrop);
-      }
-    };
+
+    if (allowBackdropClose) {
+      backdrop.onclick = (e) => {
+        if (e.target === backdrop) {
+          this.closeModal(backdrop);
+        }
+      };
+    }
+
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         this.closeModal(backdrop);
       }
     });
+
+    return backdrop;
   };
 
   this.closeModal = (modalElement) => {
     modalElement.classList.remove("show");
     modalElement.ontransitionend = () => {
       modalElement.remove();
+
+      // Enable scrolling
+      document.body.classList.remove("no-scroll");
     };
   };
 }
@@ -63,13 +74,30 @@ function Modal() {
 const modal = new Modal();
 
 $("#open-modal-1").onclick = () => {
-  modal.openModal({
+  const modalElement = modal.openModal({
     templateId: "modal-1",
   });
+
+  const img = modalElement.querySelector("img");
+  console.log(img);
 };
 
 $("#open-modal-2").onclick = () => {
-  modal.openModal({
+  const modalElement = modal.openModal({
     templateId: "modal-2",
+    allowBackdropClose: false,
   });
+
+  const form = modalElement.querySelector("#login-form");
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const formData = {
+        email: $("#email").value.trim(),
+        password: $("#password").value.trim(),
+      };
+
+      console.log(formData);
+    };
+  }
 };
