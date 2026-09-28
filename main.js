@@ -10,6 +10,8 @@ function Modal(options = {}) {
     templateId,
     destroyOnClose = true,
     cssClass = [],
+    onOpen,
+    onClose,
     closeMethods = ["button", "overlay", "escape"],
   } = options;
 
@@ -115,13 +117,20 @@ function Modal(options = {}) {
         }
       });
     }
+    this._backdrop.ontransitionend = (e) => {
+      if (e.propertyName !== "transform") return;
+      if (typeof onOpen === "function") onOpen();
+    };
 
     return this._backdrop;
   };
 
   this.close = (destroy = destroyOnClose) => {
     this._backdrop.classList.remove("show");
-    this._backdrop.ontransitionend = () => {
+    this._backdrop.ontransitionend = (e) => {
+      if (e.propertyName !== "transform") return;
+      console.log(e.propertyName);
+
       if (this._backdrop && destroy) {
         this._backdrop.remove();
         this._backdrop = null;
@@ -130,6 +139,8 @@ function Modal(options = {}) {
       // Enable scrolling
       document.body.classList.remove("no-scroll");
       document.body.style.paddingRight = "";
+
+      if (typeof onClose === "function") onClose();
     };
   };
 
@@ -141,13 +152,19 @@ function Modal(options = {}) {
 const modal1 = new Modal({
   templateId: "modal-1",
   destroyOnClose: false,
+  onOpen: () => {
+    console.log("Modal 1 opened");
+  },
+  onClose: () => {
+    console.log("Modal 1 closed");
+  },
 });
 
 $("#open-modal-1").onclick = () => {
   const modalElement = modal1.open();
 
-  const img = modalElement.querySelector("img");
-  console.log(img);
+  // const img = modalElement.querySelector("img");
+  // console.log(img);
 };
 
 const modal2 = new Modal({
@@ -156,10 +173,10 @@ const modal2 = new Modal({
   footer: true,
   cssClass: ["class1", "class2", "classN"],
   onOpen: () => {
-    console.log("Modal opened");
+    console.log("Modal 2 opened");
   },
   onClose: () => {
-    console.log("Modal closed");
+    console.log("Modal 2 closed");
   },
 });
 
