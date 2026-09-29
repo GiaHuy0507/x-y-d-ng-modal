@@ -1,30 +1,55 @@
-const $ = document.querySelector.bind(document); // tìm 1 phần tử
-const $$ = document.querySelectorAll.bind(document); // tìm nhiều phần tử
+const $ = document.querySelector.bind(document);
+// $ = tìm 1 phần tử
 
-// Hàm tạo (constructor function)
-// options = {
-//   templateId: "modal-1",
-//   destroyOnClose: false,
-//   footer: true,
-//   cssClass: [],
-//   closeMethods: ["button", "overlay", "escape"],
-//   onOpen,
-//   onClose
-// }
+const $$ = document.querySelectorAll.bind(document);
+// $$ = tìm nhiều phần tử
+
+// ======================================================
+// LƯU DANH SÁCH CÁC MODAL ĐANG ĐƯỢC MỞ
+// ======================================================
+
+// Dùng để biết modal nào đang mở cuối cùng.
+// Modal cuối cùng trong mảng = modal đang nằm trên cùng.
+Modal.elements = [];
 
 function Modal(options = {}) {
-  // destructuring
+  // ==================================================
+  // DESTRUCTURING OPTIONS
+  // ==================================================
+
   const {
     templateId,
+
+    // true: đóng modal thì xóa khỏi DOM
+    // false: đóng modal nhưng giữ lại DOM
     destroyOnClose = true,
+
+    // Có tạo footer hay không
     footer = false,
+
+    // Các class CSS thêm cho modal-container
     cssClass = [],
+
+    // Các cách cho phép đóng modal
     closeMethods = ["button", "overlay", "escape"],
+
+    // Callback chạy khi modal mở xong
     onOpen,
+
+    // Callback chạy khi modal đóng xong
     onClose,
   } = options;
 
-  // Tìm template
+  // ==================================================
+  // TÌM TEMPLATE
+  // ==================================================
+
+  // Ví dụ:
+  // templateId = "modal-1"
+  //
+  // => tìm:
+  // <template id="modal-1">
+
   const template = $(`#${templateId}`);
 
   // Nếu không tìm thấy template
@@ -33,17 +58,39 @@ function Modal(options = {}) {
     return;
   }
 
-  // Modal cho phép đóng bằng cách nào
+  // ==================================================
+  // XÁC ĐỊNH CÁCH ĐÓNG MODAL
+  // ==================================================
+
+  // Kiểm tra closeMethods có chứa "button" hay không
   this._allowButtonClose = closeMethods.includes("button");
+
+  // Kiểm tra có cho click overlay để đóng không
   this._allowBackdropClose = closeMethods.includes("overlay");
+
+  // Kiểm tra có cho phím Escape để đóng không
   this._allowEscapeClose = closeMethods.includes("escape");
 
-  // getScrollbarWidth:
-  // Đo độ rộng của thanh scrollbar
-  // để thêm padding-right cho body, tránh giao diện bị giật
+  // ==================================================
+  // GET SCROLLBAR WIDTH
+  // ==================================================
+
+  // Đo độ rộng thanh scrollbar.
+  //
+  // Khi modal mở:
+  // body sẽ bị overflow hidden
+  // => scrollbar biến mất
+  //
+  // Vì vậy nội dung có thể bị lệch.
+  //
+  // Ta thêm padding-right bằng độ rộng scrollbar
+  // để tránh giao diện bị giật.
+
   function getScrollbarWidth() {
-    // Nếu đã đo rồi thì lấy lại kết quả cũ
-    if (getScrollbarWidth.value) return getScrollbarWidth.value;
+    // Nếu đã đo trước đó thì dùng lại kết quả
+    if (getScrollbarWidth.value) {
+      return getScrollbarWidth.value;
+    }
 
     const div = document.createElement("div");
 
@@ -55,58 +102,81 @@ function Modal(options = {}) {
 
     document.body.appendChild(div);
 
-    // offsetWidth: kích thước bao gồm scrollbar
-    // clientWidth: kích thước không bao gồm scrollbar
+    // offsetWidth = bao gồm scrollbar
+    // clientWidth = không bao gồm scrollbar
     const scrollbarWidth = div.offsetWidth - div.clientWidth;
 
     document.body.removeChild(div);
 
-    // Lưu lại kết quả để lần sau không phải đo lại
+    // Lưu kết quả để lần sau không phải đo lại
     getScrollbarWidth.value = scrollbarWidth;
 
     return scrollbarWidth;
   }
 
-  // _build:
-  // Xây dựng toàn bộ modal
+  // ==================================================
+  // _BUILD
+  // ==================================================
+
+  // Hàm này dùng để XÂY DỰNG modal.
+
   this._build = () => {
-    // Lấy nội dung từ template
-    // cloneNode(true) = clone toàn bộ nội dung bên trong template
+    // Lấy nội dung bên trong <template>
+    //
+    // cloneNode(true)
+    // => clone toàn bộ nội dung bên trong template
+
     const content = template.content.cloneNode(true);
 
-    // Create modal elements
+    // ----------------------------------------------
+    // TẠO BACKDROP
+    // ----------------------------------------------
 
-    // Tạo backdrop
     this._backdrop = document.createElement("div");
+
     this._backdrop.className = "modal-backdrop";
 
-    // Tạo container
+    // ----------------------------------------------
+    // TẠO CONTAINER
+    // ----------------------------------------------
+
     const container = document.createElement("div");
+
     container.className = "modal-container";
 
-    // Thêm các class tùy chỉnh
+    // ----------------------------------------------
+    // THÊM CLASS CSS TÙY CHỈNH
+    // ----------------------------------------------
+
     cssClass.forEach((className) => {
       if (typeof className === "string") {
         container.classList.add(className);
       }
     });
 
-    // Nếu cho phép đóng bằng button
+    // ----------------------------------------------
+    // TẠO NÚT CLOSE
+    // ----------------------------------------------
+
     if (this._allowButtonClose) {
-      // Tạo nút đóng
       const closeBtn = document.createElement("button");
 
       closeBtn.className = "modal-close";
+
       closeBtn.innerHTML = "&times;";
 
       container.append(closeBtn);
 
-      // Khi click button -> đóng modal
+      // Click button => đóng modal
       closeBtn.onclick = () => this.close();
     }
 
-    // Tạo modal content
+    // ----------------------------------------------
+    // TẠO MODAL CONTENT
+    // ----------------------------------------------
+
     const modalContent = document.createElement("div");
+
     modalContent.className = "modal-content";
 
     // Đưa nội dung template vào modal-content
@@ -115,97 +185,147 @@ function Modal(options = {}) {
     // Đưa modal-content vào container
     container.append(modalContent);
 
-    // Nếu có footer
+    // ==================================================
+    // FOOTER
+    // ==================================================
+
     if (footer) {
+      // Tạo footer
       this._modalFooter = document.createElement("div");
+
       this._modalFooter.className = "modal-footer";
 
-      // Nếu đã có nội dung footer từ trước
+      // Nếu đã có nội dung footer
+      // thì đưa nội dung vào footer
       if (this._footerContent) {
         this._modalFooter.innerHTML = this._footerContent;
       }
 
+      // Đưa tất cả button đã tạo vào footer
       this._footerButtons.forEach((button) => {
         this._modalFooter.append(button);
       });
 
+      // Đưa footer vào container
       container.append(this._modalFooter);
     }
 
-    // Đưa container vào backdrop
+    // ----------------------------------------------
+    // GHÉP CÁC PHẦN LẠI
+    // ----------------------------------------------
+
+    // container nằm trong backdrop
     this._backdrop.append(container);
 
-    // Đưa backdrop vào body
+    // backdrop nằm trong body
     document.body.append(this._backdrop);
   };
 
-  // setFooterContent:
-  // Dùng để thiết lập nội dung cho footer
+  // ==================================================
+  // SET FOOTER CONTENT
+  // ==================================================
+
+  // Dùng để thay đổi nội dung footer
+
   this.setFooterContent = (html) => {
     this._footerContent = html;
 
-    // Nếu footer đã được tạo
-    // thì cập nhật nội dung ngay
+    // Nếu footer đã tồn tại trên DOM
+    // thì cập nhật ngay
     if (this._modalFooter) {
       this._modalFooter.innerHTML = html;
     }
   };
 
+  // ==================================================
+  // FOOTER BUTTONS
+  // ==================================================
+
+  // Mảng lưu các button của footer
   this._footerButtons = [];
+
+  // Hàm tạo button footer
+
   this.addFooterButton = (title, cssClass, callback) => {
     const button = document.createElement("button");
+
     button.className = cssClass;
+
     button.innerHTML = title;
+
+    // Khi click button
+    // => chạy callback
     button.onclick = callback;
 
+    // Lưu button vào mảng
     this._footerButtons.push(button);
   };
-  // open:
-  // Mở modal
+
+  // ==================================================
+  // OPEN
+  // ==================================================
+
   this.open = () => {
+    // Thêm modal hiện tại vào danh sách modal đang mở
+    //
+    // Modal mở sau sẽ nằm cuối mảng
+    // => được coi là modal trên cùng.
+
+    Modal.elements.push(this);
+
     // Nếu modal chưa được xây dựng
-    // thì xây dựng nó trước
+    // thì xây dựng trước
+
     if (!this._backdrop) {
       this._build();
     }
 
-    // Đợi DOM cập nhật xong rồi mới thêm show
-    // để CSS transition có thể hoạt động
+    // Đợi DOM cập nhật rồi mới thêm class show
+    // để CSS transition hoạt động
+
     setTimeout(() => {
       this._backdrop.classList.add("show");
     }, 0);
 
-    // Disable scrolling
+    // Khóa scroll của body
     document.body.classList.add("no-scroll");
 
-    // Thêm padding-right bằng độ rộng scrollbar
-    // để tránh nội dung body bị giật sang phải
+    // Bù lại khoảng scrollbar đã mất
     document.body.style.paddingRight = getScrollbarWidth() + "px";
 
-    // Attach event listeners
+    // ==================================================
+    // CLICK OVERLAY
+    // ==================================================
 
-    // Nếu cho phép click overlay để đóng
     if (this._allowBackdropClose) {
       this._backdrop.onclick = (e) => {
         // Chỉ đóng khi click đúng backdrop
-        // không phải click vào container/content
+        //
+        // Nếu click container/content
+        // thì không đóng.
+
         if (e.target === this._backdrop) {
           this.close();
         }
       };
     }
 
-    // Nếu cho phép dùng phím Escape để đóng
+    // ==================================================
+    // ESCAPE
+    // ==================================================
+
     if (this._allowEscapeClose) {
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-          this.close();
-        }
-      });
+      // Lắng nghe phím Escape
+      document.addEventListener("keydown", this._handleEscapeKey);
     }
 
-    // Đợi transition mở modal kết thúc
+    // ==================================================
+    // ON OPEN
+    // ==================================================
+
+    // Chờ transition mở modal kết thúc
     // rồi gọi onOpen
+
     this._onTransitionEnd(() => {
       if (typeof onOpen === "function") {
         onOpen();
@@ -213,61 +333,115 @@ function Modal(options = {}) {
     });
 
     // Trả về backdrop
-    // để bên ngoài có thể query các phần tử bên trong modal
+    //
+    // => bên ngoài có thể tìm phần tử
+    // bên trong modal.
+
     return this._backdrop;
   };
 
-  // _onTransitionEnd:
-  // Chạy callback sau khi transition của modal kết thúc
+  // ==================================================
+  // XỬ LÝ PHÍM ESCAPE
+  // ==================================================
+
+  this._handleEscapeKey = (e) => {
+    // Lấy modal cuối cùng trong mảng
+    // => modal đang nằm trên cùng
+
+    const lastModal = Modal.elements[Modal.elements.length - 1];
+
+    // Chỉ modal trên cùng mới được đóng
+    if (e.key === "Escape" && this === lastModal) {
+      this.close();
+    }
+  };
+
+  // ==================================================
+  // ON TRANSITION END
+  // ==================================================
+
+  // Chạy callback sau khi CSS transition kết thúc
+
   this._onTransitionEnd = (callback) => {
     this._backdrop.ontransitionend = (e) => {
       // Chỉ xử lý transition của transform
-      if (e.propertyName !== "transform") return;
+      if (e.propertyName !== "transform") {
+        return;
+      }
 
-      // Nếu callback là function thì gọi callback
+      // Nếu callback là function
+      // thì gọi callback
+
       if (typeof callback === "function") {
         callback();
       }
     };
   };
 
-  // close:
-  // Đóng modal
+  // ==================================================
+  // CLOSE
+  // ==================================================
+
   this.close = (destroy = destroyOnClose) => {
+    // Xóa modal hiện tại khỏi danh sách modal đang mở
+    Modal.elements.pop();
+
     // Xóa class show
-    // CSS sẽ chạy transition đóng modal
+    // => CSS bắt đầu transition đóng
+
     this._backdrop.classList.remove("show");
 
+    // Nếu cho phép ESC
+    // thì phải remove event listener
+
+    if (this._allowEscapeClose) {
+      document.removeEventListener("keydown", this._handleEscapeKey);
+    }
+
     // Chờ transition đóng hoàn thành
+
     this._onTransitionEnd(() => {
       // Nếu destroy = true
-      // thì xóa modal khỏi DOM
+      // => xóa modal khỏi DOM
+
       if (this._backdrop && destroy) {
         this._backdrop.remove();
 
-        // Đặt lại null để lần open sau
-        // có thể _build() lại modal
+        // Đặt lại null
+        // để lần open sau có thể _build() lại
+
         this._backdrop = null;
 
-        // Footer cũng không còn tồn tại
         this._modalFooter = null;
       }
 
-      // Enable scrolling
-      document.body.classList.remove("no-scroll");
+      // ==================================================
+      // XỬ LÝ SCROLL
+      // ==================================================
 
-      // Xóa padding-right đã thêm
-      document.body.style.paddingRight = "";
+      // Chỉ mở lại scroll khi
+      // KHÔNG CÒN modal nào đang mở
 
-      // Gọi callback onClose
+      if (!Modal.elements.length) {
+        document.body.classList.remove("no-scroll");
+
+        document.body.style.paddingRight = "";
+      }
+
+      // Callback khi modal đóng xong
+
       if (typeof onClose === "function") {
         onClose();
       }
     });
   };
 
-  // destroy:
+  // ==================================================
+  // DESTROY
+  // ==================================================
+
   // Ép modal đóng và xóa khỏi DOM
+
   this.destroy = () => {
     this.close(true);
   };
@@ -280,7 +454,7 @@ function Modal(options = {}) {
 const modal1 = new Modal({
   templateId: "modal-1",
 
-  // Đóng modal nhưng không xóa khỏi DOM
+  // Đóng modal nhưng KHÔNG xóa khỏi DOM
   destroyOnClose: false,
 
   onOpen: () => {
@@ -303,10 +477,10 @@ $("#open-modal-1").onclick = () => {
 const modal2 = new Modal({
   templateId: "modal-2",
 
-  // Có thể chỉ định cách đóng:
+  // Có thể giới hạn cách đóng
   // closeMethods: ["button", "overlay", "escape"],
 
-  // Thêm class CSS tùy chỉnh cho container
+  // Thêm class CSS cho container
   cssClass: ["class1", "class2", "classN"],
 
   onOpen: () => {
@@ -327,12 +501,13 @@ $("#open-modal-2").onclick = () => {
 
   if (form) {
     form.onsubmit = (e) => {
-      // Không cho form reload trang
+      // Ngăn form reload trang
       e.preventDefault();
 
       // Lấy dữ liệu form
       const formData = {
         email: $("#email").value.trim(),
+
         password: $("#password").value.trim(),
       };
 
@@ -348,6 +523,9 @@ $("#open-modal-2").onclick = () => {
 const modal3 = new Modal({
   templateId: "modal-3",
 
+  // Chỉ cho phép đóng bằng Escape
+  closeMethods: ["escape"],
+
   // Cho phép tạo footer
   footer: true,
 
@@ -360,20 +538,33 @@ const modal3 = new Modal({
   },
 });
 
-// Thiết lập nội dung footer
+// ======================================================
+// FOOTER
+// ======================================================
+
+// Có thể đặt nội dung HTML cho footer
 // modal3.setFooterContent("<h2>Footer content</h2>");
 
+// Button Danger
 modal3.addFooterButton("Danger", "modal-btn danger pull-left", (e) => {
   alert("Danger clicked!");
 });
 
+// Button Cancel
 modal3.addFooterButton("Cancel", "modal-btn", (e) => {
   modal3.close();
 });
 
+// Button Agree
 modal3.addFooterButton("<span>Agree</span>", "modal-btn primary", (e) => {
-  // Something...
+  // Xử lý khi Agree
   modal3.close();
 });
-// Mở modal
-modal3.open();
+
+// ======================================================
+// MỞ MODAL 3
+// ======================================================
+
+$("#open-modal-3").onclick = () => {
+  modal3.open();
+};
